@@ -15,7 +15,7 @@ async function check(page: import("@playwright/test").Page, query: string, expec
   await page.getByRole("button", { name: /Check a product or activity/ }).click();
   await page.getByLabel("Product or activity").fill(query);
   await page.getByRole("button", { name: /Check this item/ }).click();
-  await expect(page.getByText(expected, { exact: false })).toBeVisible();
+  await expect(page.getByRole("dialog").getByText(expected, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Back to pass/ }).click();
 }
 
@@ -50,7 +50,10 @@ test("reduced motion uses an immediate state swap", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 402, height: 874 }, reducedMotion: "reduce" });
   const page = await context.newPage();
   await openPass(page);
-  const duration = await page.locator(".skin-pass").evaluate((element) => getComputedStyle(element).animationDuration);
-  expect(["0s", "0.001ms"]).toContain(duration);
+  const durationMs = await page.locator(".skin-pass").evaluate((element) => {
+    const duration = getComputedStyle(element).animationDuration;
+    return duration.endsWith("ms") ? Number.parseFloat(duration) : Number.parseFloat(duration) * 1000;
+  });
+  expect(durationMs).toBeLessThanOrEqual(0.001);
   await context.close();
 });
