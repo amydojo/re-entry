@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { HydrationMarker } from "@/components/ui/hydration-marker";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${geist.variable} ${geistMono.variable}`}>{children}</body>
+      <body className={`${geist.variable} ${geistMono.variable}`}><HydrationMarker />{children}</body>
     </html>
   );
 }
