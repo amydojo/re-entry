@@ -22,8 +22,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package.json
-      - run: npm install --no-audit
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit
       - name: Verify source
         shell: bash
         run: |
@@ -60,8 +60,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package.json
-      - run: npm install --no-audit
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
         env:
