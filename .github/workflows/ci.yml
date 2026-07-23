@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, feat/reentry-production-vertical-slice]
+    branches: [main, feat/reentry-production-vertical-slice, feat/protocol-studio]
 
 concurrency:
   group: reentry-ci-${{ github.workflow }}-${{ github.ref }}
