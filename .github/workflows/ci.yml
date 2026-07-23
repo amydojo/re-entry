@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, feat/reentry-production-vertical-slice]
+
+concurrency:
+  group: reentry-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit
+      - name: Verify source
+        shell: bash
+        run: |
+          set +e
+          npm run lint > lint.log 2>&1
+          lint_exit=$?
+          npm run typecheck > typecheck.log 2>&1
+          typecheck_exit=$?
+          npm test > unit.log 2>&1
+          unit_exit=$?
+          npm run build > build.log 2>&1
+          build_exit=$?
+          printf 'lint=%s\ntypecheck=%s\nunit=%s\nbuild=%s\n' "$lint_exit" "$typecheck_exit" "$unit_exit" "$build_exit" > verify-status.txt
+          cat verify-status.txt
+          if (( lint_exit || typecheck_exit || unit_exit || build_exit )); then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reentry-verify-diagnostics
+          path: |
+            lint.log
+            typecheck.log
+            unit.log
+            build.log
+            verify-status.txt
+          if-no-files-found: error
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          REENTRY_DEMO_MODE: "1"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reentry-playwright-evidence
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
