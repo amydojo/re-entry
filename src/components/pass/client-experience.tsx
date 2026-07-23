@@ -32,13 +32,19 @@ export function ClientExperience({ initialSource, publicId, token }: {
   const storageKey = `reentry:${publicId}`;
 
   useEffect(() => {
-    setFirstOpen(localStorage.getItem(`${storageKey}:opened`) !== "1");
     localStorage.setItem(storageKey, JSON.stringify(initialSource));
     const sync = () => setOffline(!navigator.onLine);
-    sync();
+    const hydrationTimer = window.setTimeout(() => {
+      setFirstOpen(localStorage.getItem(`${storageKey}:opened`) !== "1");
+      sync();
+    }, 0);
     window.addEventListener("online", sync);
     window.addEventListener("offline", sync);
-    return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync); };
+    return () => {
+      window.clearTimeout(hydrationTimer);
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
   }, [initialSource, storageKey]);
 
   function openPass() {

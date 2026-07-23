@@ -10,10 +10,10 @@ type VersionRow = { version: number; created_at: string; reason: string | null; 
 type AuditRow = { id: string; action: string; actor_kind: string; metadata: Record<string, unknown>; created_at: string };
 type Pass = { id: string; public_id: string; client_name: string; client_mobile: string | null; treatment_name: string; treatment_date: string; status: string; protocol_version: number; revoked_at: string | null };
 
-export function PassManager({ pass, events, versions, audits }: { pass: Pass; events: EventRow[]; versions: VersionRow[]; audits: AuditRow[] }) {
+export function PassManager({ pass, events, versions, audits, serverNow }: { pass: Pass; events: EventRow[]; versions: VersionRow[]; audits: AuditRow[]; serverNow: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<"manage" | "edit" | "review" | "revoke" | "revoked">(pass.status === "revoked" ? "revoked" : "manage");
-  const futureEvents = useMemo(() => events.filter((event) => !event.completed_at && new Date(event.return_at).getTime() > Date.now()), [events]);
+  const futureEvents = useMemo(() => events.filter((event) => !event.completed_at && new Date(event.return_at).getTime() > new Date(serverNow).getTime()), [events, serverNow]);
   const [eventId, setEventId] = useState(futureEvents[0]?.id ?? "");
   const selected = futureEvents.find((event) => event.id === eventId) ?? null;
   const [returnDate, setReturnDate] = useState(selected?.return_at.slice(0, 10) ?? "");

@@ -22,15 +22,10 @@ export function IssueWizard() {
   const [loading, setLoading] = useState(false);
 
   const previewEvents = useMemo<ReturnEventSource[]>(() => [
-    makeEvent("makeup", "Makeup", 1, days.makeup),
-    makeEvent("acids", "Exfoliating acids", 2, days.acids),
-    makeEvent("retinoid", "Retinoid", 3, days.retinoid)
+    makePreviewEvent(treatmentDate, "makeup", "Makeup", 1, days.makeup),
+    makePreviewEvent(treatmentDate, "acids", "Exfoliating acids", 2, days.acids),
+    makePreviewEvent(treatmentDate, "retinoid", "Retinoid", 3, days.retinoid)
   ], [days, treatmentDate]);
-
-  function makeEvent(id: string, label: string, ordinal: number, day: number): ReturnEventSource {
-    const date = new Date(`${treatmentDate}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() + day);
-    return { id, itemId: id, itemKey: id, itemLabel: label, ordinal, returnAt: date.toISOString(), completedAt: null };
-  }
 
   async function issue() {
     setLoading(true); setError(null);
@@ -70,4 +65,11 @@ function IssuedShare({ issued, mobile }: { issued: Issued; mobile: string }) {
   async function copy() { await navigator.clipboard.writeText(url); setCopied(true); }
   async function share() { if (navigator.share) await navigator.share({ title: "RE:ENTRY Skin Pass", url }); else await copy(); }
   return <><ContextHeader title="Skin Pass issued" meta="COMPLETE" backHref="/desk" /><p className="section-label">Permanent ID assigned</p><h1 className="page-title small">The Skin Pass is live.</h1><p className="support">The raw access token is shown only in this delivery state. The database stores its hash.</p><div className="disclosure" style={{ marginTop: 28 }}><h3>Skin Pass ID</h3><p className="meta">{issued.publicId} · PROTOCOL {issued.protocolVersion}</p></div><p className="section-label">Secure client link</p><div className="copy-code">{url}</div><div className="stack" style={{ marginTop: 24 }}><Action onClick={copy}>{copied ? "Link copied" : "Copy secure client link"}</Action><Action variant="secondary" onClick={share}>Share with device</Action>{mobile && <Action variant="secondary" href={`sms:${mobile}?&body=${encodeURIComponent(`Your RE:ENTRY Skin Pass: ${url}`)}`}>Text client</Action>}<Action variant="secondary" href={`/client/${issued.publicId}/${issued.token}`}>Open client view</Action><Action variant="quiet" href={`/desk/pass/${issued.id}`}>Manage issued pass</Action></div></>;
+}
+
+
+function makePreviewEvent(treatmentDate: string, id: string, label: string, ordinal: number, day: number): ReturnEventSource {
+  const date = new Date(`${treatmentDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + day);
+  return { id, itemId: id, itemKey: id, itemLabel: label, ordinal, returnAt: date.toISOString(), completedAt: null };
 }

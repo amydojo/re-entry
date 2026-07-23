@@ -14,7 +14,7 @@ const demoEvents = [
 export default async function ManagePassPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireProvider();
-  if (process.env.REENTRY_DEMO_MODE === "1") return <PhoneShell><PassManager pass={demoPass} events={demoEvents} versions={[{ version: 1, created_at: "2026-07-20T18:00:00Z", reason: "Issued", changed_item_label: null, previous_return_at: null, new_return_at: null }]} audits={[{ id: "audit-1", action: "pass_issued", actor_kind: "provider", metadata: {}, created_at: "2026-07-20T18:00:00Z" }]} /></PhoneShell>;
+  if (process.env.REENTRY_DEMO_MODE === "1") return <PhoneShell><PassManager pass={demoPass} events={demoEvents} serverNow="2026-07-22T19:00:00Z" versions={[{ version: 1, created_at: "2026-07-20T18:00:00Z", reason: "Issued", changed_item_label: null, previous_return_at: null, new_return_at: null }]} audits={[{ id: "audit-1", action: "pass_issued", actor_kind: "provider", metadata: {}, created_at: "2026-07-20T18:00:00Z" }]} /></PhoneShell>;
   const { data: pass } = await supabase.from("skin_passes").select("id,public_id,client_name,client_mobile,treatment_name,treatment_date,status,protocol_version,revoked_at").eq("id", id).single();
   if (!pass) notFound();
   const [{ data: eventRows }, { data: versions }, { data: audits }] = await Promise.all([
@@ -23,5 +23,5 @@ export default async function ManagePassPage({ params }: { params: Promise<{ id:
     supabase.from("pass_audit_events").select("id,action,actor_kind,metadata,created_at").eq("pass_id", id).order("created_at", { ascending: false })
   ]);
   const events = (eventRows ?? []).map((row: Record<string, unknown>) => ({ id: String(row.id), ordinal: Number(row.ordinal), return_at: String(row.return_at), completed_at: row.completed_at ? String(row.completed_at) : null, item_label: String((row.skin_pass_items as { item_label?: string } | null)?.item_label ?? "Return event") }));
-  return <PhoneShell><PassManager pass={pass} events={events} versions={versions ?? []} audits={audits ?? []} /></PhoneShell>;
+  return <PhoneShell><PassManager pass={pass} events={events} serverNow={new Date().toISOString()} versions={versions ?? []} audits={audits ?? []} /></PhoneShell>;
 }
