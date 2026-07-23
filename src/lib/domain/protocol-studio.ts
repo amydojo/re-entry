@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { PassSnapshotSource } from "./types";
 import { normalizeProtocolTerm } from "./normalization";
 
+export { normalizeProtocolTerm };
 export type ProtocolTemplateStatus = "draft" | "published" | "archived";
 export type ProtocolItemKind = "product" | "activity";
 export type ProtocolInventoryGroup = "routine" | "activity";
