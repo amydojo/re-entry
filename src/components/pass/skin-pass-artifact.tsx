@@ -1,17 +1,39 @@
-import type { ReturnEventSource } from "@/lib/domain/types";
+import type { DerivedPassState, ReturnEventSource } from "@/lib/domain/types";
 import { formatProtocolDate, relativeReturnCopy } from "@/lib/domain/time-engine";
 
 export function SkinPassArtifact({
   event,
   serverNow,
   totalEvents,
-  completed = false
+  completed = false,
+  routineState = "Routine restored",
+  recoveryDurationDays = 7,
+  routineRestoredMessage = "Your provider-authored routine is fully restored."
 }: {
   event: ReturnEventSource | null;
   serverNow: string;
   totalEvents: number;
   completed?: boolean;
+  routineState?: DerivedPassState["routineState"];
+  recoveryDurationDays?: number;
+  routineRestoredMessage?: string;
 }) {
+  if (!event && routineState === "Re-entry in progress") {
+    return (
+      <article className="skin-pass" aria-label="Recovery window Skin Pass">
+        <div className="skin-pass-edge" />
+        <div className="skin-pass-signal" aria-label="Current recovery window" />
+        <p className="meta">RECOVERY WINDOW</p>
+        <div className="skin-pass-rule" />
+        <h2>Routine remains staged</h2>
+        <p className="skin-pass-date">FULL ROUTINE · DAY {String(recoveryDurationDays).padStart(2, "0")}</p>
+        <div className="skin-pass-status"><small>Status</small><span>Awaiting restoration boundary</span></div>
+        <span className="edge-label">ACTIVE PROTOCOL</span>
+        <span className="event-index">··</span>
+      </article>
+    );
+  }
+
   if (!event) {
     return (
       <article className="skin-pass" aria-label="Routine restored Skin Pass">
@@ -19,7 +41,7 @@ export function SkinPassArtifact({
         <p className="meta">PROTOCOL COMPLETE</p>
         <div className="skin-pass-rule" />
         <h2>Routine restored</h2>
-        <p className="skin-pass-date">ALL PROVIDER-DEFINED EVENTS COMPLETE</p>
+        <p className="skin-pass-date">{routineRestoredMessage.toUpperCase()}</p>
         <div className="skin-pass-status"><small>Status</small><span>Permanent record</span></div>
         <span className="edge-label">RETURN RECORD</span>
         <span className="event-index">✓</span>
