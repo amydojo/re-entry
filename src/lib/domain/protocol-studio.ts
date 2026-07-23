@@ -72,18 +72,10 @@ export const protocolDraftSaveSchema = z.object({
 });
 
 export const protocolDraftPublishSchema = protocolDraftSaveSchema.superRefine((draft, context) => {
-  if (!draft.protocolName) {
-    context.addIssue({ code: "custom", path: ["protocolName"], message: "Protocol name is required before publishing." });
-  }
-  if (!draft.treatmentLabel) {
-    context.addIssue({ code: "custom", path: ["treatmentLabel"], message: "Client-facing treatment label is required." });
-  }
-  if (!draft.providerGuidance) {
-    context.addIssue({ code: "custom", path: ["providerGuidance"], message: "Provider guidance is required." });
-  }
-  if (!draft.routineRestoredMessage) {
-    context.addIssue({ code: "custom", path: ["routineRestoredMessage"], message: "Routine-restored copy is required." });
-  }
+  if (!draft.protocolName) context.addIssue({ code: "custom", path: ["protocolName"], message: "Protocol name is required before publishing." });
+  if (!draft.treatmentLabel) context.addIssue({ code: "custom", path: ["treatmentLabel"], message: "Client-facing treatment label is required." });
+  if (!draft.providerGuidance) context.addIssue({ code: "custom", path: ["providerGuidance"], message: "Provider guidance is required." });
+  if (!draft.routineRestoredMessage) context.addIssue({ code: "custom", path: ["routineRestoredMessage"], message: "Routine-restored copy is required." });
 
   const items = draft.items.filter((item) => item.enabled);
   if (!items.length) {
@@ -100,55 +92,46 @@ export const protocolDraftPublishSchema = protocolDraftSaveSchema.superRefine((d
     const path = ["items", index] as (string | number)[];
     const canonical = normalizeProtocolTerm(item.canonicalName);
     const key = normalizeProtocolTerm(item.itemKey);
-
     if (!canonical) context.addIssue({ code: "custom", path: [...path, "canonicalName"], message: "Canonical display name is required." });
     if (!key) context.addIssue({ code: "custom", path: [...path, "itemKey"], message: "Item key is required." });
 
     if (canonical) {
       const duplicate = names.get(canonical);
-      if (duplicate !== undefined) {
-        context.addIssue({ code: "custom", path: [...path, "canonicalName"], message: `Duplicates item ${duplicate + 1} after normalization.` });
-      } else {
-        names.set(canonical, index);
-      }
+      if (duplicate !== undefined) context.addIssue({ code: "custom", path: [...path, "canonicalName"], message: `Duplicates item ${duplicate + 1} after normalization.` });
+      else names.set(canonical, index);
     }
 
-    if (ordinals.has(item.ordinal)) {
-      context.addIssue({ code: "custom", path: [...path, "ordinal"], message: "Display order must be unique." });
-    }
+    if (ordinals.has(item.ordinal)) context.addIssue({ code: "custom", path: [...path, "ordinal"], message: "Display order must be unique." });
     ordinals.add(item.ordinal);
 
-    if (item.baselineAvailable && item.returnDay !== null && item.returnDay > 0) {
-      context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Available-now items cannot also have a future-only return day." });
-    }
-    if (!item.baselineAvailable && item.returnDay === null) {
-      context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Held items need a return day." });
-    }
-    if (item.returnDay !== null && item.returnDay > draft.recoveryDurationDays) {
-      context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Return day cannot exceed the recovery duration." });
-    }
+    if (item.baselineAvailable && item.returnDay !== null && item.returnDay > 0) context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Available-now items cannot also have a future-only return day." });
+    if (!item.baselineAvailable && item.returnDay === null) context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Held items need a return day." });
+    if (item.returnDay !== null && item.returnDay > draft.recoveryDurationDays) context.addIssue({ code: "custom", path: [...path, "returnDay"], message: "Return day cannot exceed the recovery duration." });
     latestReturnDay = Math.max(latestReturnDay, item.returnDay ?? 0);
 
-    const terms = [item.canonicalName, item.itemKey, ...item.aliases];
-    const localTerms = new Set<string>();
-    terms.forEach((term, termIndex) => {
-      const normalized = normalizeProtocolTerm(term);
-      const aliasPath = termIndex < 2 ? [...path, termIndex === 0 ? "canonicalName" : "itemKey"] : [...path, "aliases", termIndex - 2];
+    const primaryTerms = new Set([canonical, key].filter(Boolean));
+    for (const normalized of primaryTerms) {
+      const existing = lookupTerms.get(normalized);
+      if (existing && existing.index !== index) context.addIssue({ code: "custom", path, message: `Lookup term collides with ${existing.label}.` });
+      else lookupTerms.set(normalized, { index, label: item.canonicalName || `item ${index + 1}` });
+    }
+
+    const localAliases = new Set<string>();
+    item.aliases.forEach((alias, aliasIndex) => {
+      const normalized = normalizeProtocolTerm(alias);
+      const aliasPath = [...path, "aliases", aliasIndex];
       if (!normalized) {
-        if (termIndex >= 2) context.addIssue({ code: "custom", path: aliasPath, message: "Remove empty aliases." });
+        context.addIssue({ code: "custom", path: aliasPath, message: "Remove empty aliases." });
         return;
       }
-      if (localTerms.has(normalized)) {
+      if (localAliases.has(normalized) || primaryTerms.has(normalized)) {
         context.addIssue({ code: "custom", path: aliasPath, message: "This item repeats the same lookup term." });
         return;
       }
-      localTerms.add(normalized);
+      localAliases.add(normalized);
       const existing = lookupTerms.get(normalized);
-      if (existing && existing.index !== index) {
-        context.addIssue({ code: "custom", path: aliasPath, message: `Collides with ${existing.label}.` });
-      } else {
-        lookupTerms.set(normalized, { index, label: item.canonicalName || `item ${index + 1}` });
-      }
+      if (existing && existing.index !== index) context.addIssue({ code: "custom", path: aliasPath, message: `Collides with ${existing.label}.` });
+      else lookupTerms.set(normalized, { index, label: item.canonicalName || `item ${index + 1}` });
     });
   });
 
@@ -156,9 +139,7 @@ export const protocolDraftPublishSchema = protocolDraftSaveSchema.superRefine((d
   sortedOrdinals.forEach((ordinal, index) => {
     if (ordinal !== index) context.addIssue({ code: "custom", path: ["items"], message: "Enabled item display order must be contiguous from 0." });
   });
-  if (latestReturnDay > draft.recoveryDurationDays) {
-    context.addIssue({ code: "custom", path: ["recoveryDurationDays"], message: "Recovery duration must include every return event." });
-  }
+  if (latestReturnDay > draft.recoveryDurationDays) context.addIssue({ code: "custom", path: ["recoveryDurationDays"], message: "Recovery duration must include every return event." });
 });
 
 export function validateProtocolForPublish(draft: unknown) {
@@ -166,23 +147,19 @@ export function validateProtocolForPublish(draft: unknown) {
 }
 
 export function protocolSnapshotFromDraft(draft: ProtocolDraft) {
-  const items = draft.items
-    .filter((item) => item.enabled)
-    .sort((a, b) => a.ordinal - b.ordinal)
-    .map((item) => ({
-      itemKey: item.itemKey,
-      canonicalName: item.canonicalName,
-      kind: item.kind,
-      category: item.category,
-      inventoryGroup: item.inventoryGroup,
-      clientExplanation: item.clientExplanation,
-      providerNote: item.providerNote,
-      baselineAvailable: item.baselineAvailable,
-      returnDay: item.returnDay,
-      aliases: item.aliases.map((alias) => alias.trim()).filter(Boolean),
-      ordinal: item.ordinal
-    }));
-
+  const items = draft.items.filter((item) => item.enabled).sort((a, b) => a.ordinal - b.ordinal).map((item) => ({
+    itemKey: item.itemKey,
+    canonicalName: item.canonicalName,
+    kind: item.kind,
+    category: item.category,
+    inventoryGroup: item.inventoryGroup,
+    clientExplanation: item.clientExplanation,
+    providerNote: item.providerNote,
+    baselineAvailable: item.baselineAvailable,
+    returnDay: item.returnDay,
+    aliases: item.aliases.map((alias) => alias.trim()).filter(Boolean),
+    ordinal: item.ordinal
+  }));
   return {
     protocolName: draft.protocolName,
     treatmentLabel: draft.treatmentLabel,
@@ -204,10 +181,7 @@ function isoAtDay(day: number): string {
 export function makeProtocolPreviewSource(draft: ProtocolDraft, recoveryDay: number): PassSnapshotSource {
   const snapshot = protocolSnapshotFromDraft(draft);
   const enabledItems = snapshot.items;
-  const eventItems = enabledItems
-    .filter((item) => !item.baselineAvailable && item.returnDay !== null)
-    .sort((a, b) => (a.returnDay ?? 0) - (b.returnDay ?? 0) || a.ordinal - b.ordinal);
-
+  const eventItems = enabledItems.filter((item) => !item.baselineAvailable && item.returnDay !== null).sort((a, b) => (a.returnDay ?? 0) - (b.returnDay ?? 0) || a.ordinal - b.ordinal);
   const items = enabledItems.map((item) => ({
     id: `preview-${item.itemKey}`,
     key: item.itemKey,
@@ -220,7 +194,6 @@ export function makeProtocolPreviewSource(draft: ProtocolDraft, recoveryDay: num
     clientExplanation: item.clientExplanation || null,
     aliases: item.aliases
   }));
-
   const events = eventItems.map((item, index) => ({
     id: `preview-event-${item.itemKey}`,
     itemId: `preview-${item.itemKey}`,
@@ -230,7 +203,6 @@ export function makeProtocolPreviewSource(draft: ProtocolDraft, recoveryDay: num
     returnAt: isoAtDay(item.returnDay ?? 0),
     completedAt: null
   }));
-
   return {
     access: "active",
     serverNow: isoAtDay(Math.max(0, recoveryDay)),
@@ -264,9 +236,7 @@ export function summarizeProtocolChange(previousSnapshot: unknown, draft: Protoc
   if (previous.recoveryDurationDays !== next.recoveryDurationDays) changes.push("Recovery duration changed");
   const previousItems = Array.isArray(previous.items) ? previous.items : [];
   if (previousItems.length !== next.items.length) changes.push(`Item count ${previousItems.length} → ${next.items.length}`);
-  const previousJson = JSON.stringify(previousItems);
-  const nextJson = JSON.stringify(next.items);
-  if (previousJson !== nextJson && previousItems.length === next.items.length) changes.push("Item timing, aliases, or guidance changed");
+  if (JSON.stringify(previousItems) !== JSON.stringify(next.items) && previousItems.length === next.items.length) changes.push("Item timing, aliases, or guidance changed");
   if (previous.providerGuidance !== next.providerGuidance) changes.push("Provider guidance changed");
   if (previous.routineRestoredMessage !== next.routineRestoredMessage) changes.push("Routine-restored message changed");
   return changes.length ? changes : ["No behavioral differences detected"];
