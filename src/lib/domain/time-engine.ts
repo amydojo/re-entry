@@ -50,7 +50,6 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
     else if (matchingEvent && activeEvent?.id === matchingEvent.id) state = "queued";
     else if (matchingEvent && completedIds.has(item.id)) state = "returned";
     else state = "held";
-
     return { ...item, state, returnAt: matchingEvent?.returnAt ?? item.authoredReturnAt };
   });
 
@@ -89,7 +88,7 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
       (item) => item.inventoryGroup === "routine" && (item.state === "available" || item.state === "returned")
     ),
     heldRoutine: items.filter(
-      (item) => item.inventoryGroup === "routine" && (item.state === "held" || item.state === "queued")
+      (item) => item.inventoryGroup === "routine" && item.state === "held"
     ),
     updatedByProvider,
     protocolVersion: source.protocolVersion ?? 1,
@@ -107,7 +106,6 @@ export function answerItem(state: DerivedPassState, query: string): {
   const normalized = normalizeProtocolTerm(query);
   if (!normalized) return { outcome: "NOT_IN_PASS", item: null };
   if (isProviderOnlyQuery(query)) return { outcome: "PROVIDER_ONLY", item: null };
-
   const item = state.items.find((candidate) => {
     const terms = [candidate.label, candidate.key, ...(candidate.aliases ?? [])];
     return terms.some((term) => normalizeProtocolTerm(term) === normalized);
