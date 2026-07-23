@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
-
 export function HydrationMarker() {
-  useEffect(() => {
-    document.documentElement.dataset.hydrated = "true";
-    return () => { delete document.documentElement.dataset.hydrated; };
-  }, []);
-  return null;
+  return (
+    <span
+      hidden
+      data-hydration-marker
+      ref={() => {
+        document.documentElement.dataset.hydrated = "true";
+      }}
+    />
+  );
 }
