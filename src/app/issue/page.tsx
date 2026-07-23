@@ -11,7 +11,12 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
   let protocols: IssuableProtocolVersion[] = [];
 
   if (process.env.REENTRY_DEMO_MODE === "1") {
-    protocols = listDemoPublishedVersions().map((version) => ({
+    const currentByTemplate = new Map<string, ReturnType<typeof listDemoPublishedVersions>[number]>();
+    for (const version of listDemoPublishedVersions()) {
+      const current = currentByTemplate.get(version.template_id);
+      if (!current || version.version > current.version) currentByTemplate.set(version.template_id, version);
+    }
+    protocols = [...currentByTemplate.values()].map((version) => ({
       id: version.id,
       templateId: version.template_id,
       protocolName: version.protocol_name,
@@ -30,10 +35,7 @@ export default async function IssuePage({ searchParams }: { searchParams: Promis
     if (error) throw new Error("Unable to load published protocols");
     const templateIds = (templates ?? []).map((row) => row.id);
     const { data: versions } = templateIds.length
-      ? await supabase
-          .from("protocol_template_versions")
-          .select("id,template_id,version,snapshot")
-          .in("template_id", templateIds)
+      ? await supabase.from("protocol_template_versions").select("id,template_id,version,snapshot").in("template_id", templateIds)
       : { data: [] as { id: string; template_id: string; version: number; snapshot: Record<string, unknown> }[] };
     const templateMap = new Map((templates ?? []).map((row) => [row.id, row]));
     protocols = (versions ?? [])
