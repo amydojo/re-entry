@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const privateNoStore = [{ key: "Cache-Control", value: "private, no-store, max-age=0" }];
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -17,14 +19,10 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" }
         ]
       },
-      {
-        source: "/client/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }]
-      },
-      {
-        source: "/desk/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }]
-      }
+      { source: "/client/:path*", headers: privateNoStore },
+      { source: "/desk/:path*", headers: privateNoStore },
+      { source: "/protocols/:path*", headers: privateNoStore },
+      { source: "/issue", headers: privateNoStore }
     ];
   }
 };
