@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+async function waitForHydration(page: import("@playwright/test").Page) {
+  await page.locator("html[data-hydrated='true']").waitFor();
+}
+
 async function openPass(page: import("@playwright/test").Page) {
   await page.goto("/client/SP-0042/demo-secure-token");
+  await waitForHydration(page);
   await page.getByRole("button", { name: /Open Skin Pass/ }).click();
   await expect(page.getByRole("heading", { name: "Re-entry in progress" })).toBeVisible();
 }
