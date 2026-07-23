@@ -17,6 +17,8 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await expect(page.getByRole("heading", { name: "Light Chemical Peel" })).toBeVisible();
   await expect(page.getByLabel("Client lookup aliases").first()).toHaveValue("cleanser, face wash");
   await expect(page.getByText("Place each return in time.")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("protocol-editor.png"), fullPage: true });
+  await page.locator(".sticky-instrument").screenshot({ path: testInfo.outputPath("reentry-rail.png") });
 
   await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.getByText("The real Skin Pass engine is running against unsaved draft data.")).toBeVisible();
@@ -47,6 +49,8 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await expect(page.getByText(/TEMPLATE 1 · PASS 1/)).toBeVisible();
 
   await page.goto("/protocols");
+  await waitForHydration(page);
+  await page.screenshot({ path: testInfo.outputPath("protocol-library.png"), fullPage: true });
   await page.getByRole("link", { name: "Light Chemical Peel", exact: true }).click();
   await waitForHydration(page);
   const retinoidGroup = page.getByRole("group", { name: /Item 07 · Retinoid/ });
@@ -59,6 +63,7 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await page.getByRole("button", { name: "Open version history" }).click();
   await expect(page.getByText("Move retinoid return to Day 9.")).toBeVisible();
   await expect(page.getByText("Initial provider-authored Light Chemical Peel edition.")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("protocol-version-history.png"), fullPage: true });
 
   await page.goto("/issue");
   await waitForHydration(page);
