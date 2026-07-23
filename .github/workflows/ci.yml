@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, feat/reentry-production-vertical-slice]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+      - run: npm install --no-audit
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+      - run: npm install --no-audit
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          REENTRY_DEMO_MODE: "1"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reentry-playwright-evidence
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
