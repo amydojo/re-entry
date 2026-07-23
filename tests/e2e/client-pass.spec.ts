@@ -24,7 +24,6 @@ test("Day 2 state exposes the exact four answer outcomes without invention", asy
   await expect(page.getByText("Makeup returns tomorrow", { exact: false })).toBeVisible();
   await expect(page.getByText("3 items available now. 2 remain held.")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("client-day-2.png"), fullPage: true });
-
   await check(page, "Gentle cleanser", "AVAILABLE NOW");
   await check(page, "Retinoid", "NOT YET");
   await check(page, "Makeup", "RETURNS NEXT");
@@ -35,7 +34,7 @@ test("Day 2 state exposes the exact four answer outcomes without invention", asy
 test("inventory, provider guidance, keyboard focus, and 402px viewport remain usable", async ({ page }) => {
   await openPass(page);
   await page.getByRole("button", { name: /AVAILABLE NOW/ }).click();
-  await expect(page.getByText("Gentle cleanser")).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("Gentle cleanser", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: /PROVIDER GUIDANCE/ }).click();
   await expect(page.getByText(/does not diagnose/i)).toBeVisible();
