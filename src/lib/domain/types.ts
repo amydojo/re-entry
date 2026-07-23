@@ -14,6 +14,8 @@ export interface PassItemSource {
   baselineAvailable: boolean;
   authoredReturnAt: string | null;
   providerNote?: string | null;
+  clientExplanation?: string | null;
+  aliases?: string[];
 }
 
 export interface ReturnEventSource {
@@ -47,6 +49,9 @@ export interface PassSnapshotSource {
   providerName?: string;
   providerPhone?: string | null;
   providerGuidance?: string | null;
+  routineRestoredMessage?: string | null;
+  recoveryDurationDays?: number;
+  templateVersion?: number | null;
   protocolVersion?: number;
   status?: PassStatus;
   items?: PassItemSource[];
@@ -69,7 +74,9 @@ export interface DerivedPassState {
   treatmentDate: string | null;
   protocolTimeZone: string;
   recoveryDay: number;
+  recoveryDurationDays: number;
   routineState: "Re-entry in progress" | "Routine restored";
+  routineRestoredMessage: string;
   activeEvent: ReturnEventSource | null;
   followingEvent: ReturnEventSource | null;
   completedEvents: ReturnEventSource[];
@@ -78,6 +85,7 @@ export interface DerivedPassState {
   heldRoutine: DerivedItem[];
   updatedByProvider: ProtocolVersionSource | null;
   protocolVersion: number;
+  templateVersion: number | null;
   providerName: string | null;
   providerPhone: string | null;
   providerGuidance: string | null;
