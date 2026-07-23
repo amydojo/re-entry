@@ -5,22 +5,9 @@ import type {
   PassSnapshotSource,
   ReturnEventSource
 } from "./types";
+import { isProviderOnlyQuery, normalizeProtocolTerm } from "./normalization";
 
 const DAY_MS = 86_400_000;
-const SAFETY_TERMS = [
-  "pain",
-  "reaction",
-  "rash",
-  "swelling",
-  "bleeding",
-  "infection",
-  "fever",
-  "worse",
-  "worsening",
-  "unexpected",
-  "burning",
-  "blister"
-];
 
 function instant(value: string): number {
   const parsed = Date.parse(value);
@@ -63,7 +50,6 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
     else if (matchingEvent && activeEvent?.id === matchingEvent.id) state = "queued";
     else if (matchingEvent && completedIds.has(item.id)) state = "returned";
     else state = "held";
-
     return { ...item, state, returnAt: matchingEvent?.returnAt ?? item.authoredReturnAt };
   });
 
@@ -73,7 +59,8 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
   const recoveryDay = treatmentDate
     ? Math.max(0, calendarDayNumber(currentDateKey) - calendarDayNumber(treatmentDate))
     : 0;
-  const routineState = events.length > 0 && incompleteEvents.length === 0
+  const recoveryDurationDays = Math.max(1, source.recoveryDurationDays ?? 7);
+  const routineState = incompleteEvents.length === 0 && recoveryDay >= recoveryDurationDays
     ? "Routine restored"
     : "Re-entry in progress";
   const updatedByProvider = [...(source.versions ?? [])]
@@ -90,7 +77,9 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
     treatmentDate,
     protocolTimeZone,
     recoveryDay,
+    recoveryDurationDays,
     routineState,
+    routineRestoredMessage: source.routineRestoredMessage ?? "Your provider-authored routine is fully restored.",
     activeEvent,
     followingEvent,
     completedEvents,
@@ -103,6 +92,7 @@ export function derivePassState(source: PassSnapshotSource): DerivedPassState {
     ),
     updatedByProvider,
     protocolVersion: source.protocolVersion ?? 1,
+    templateVersion: source.templateVersion ?? null,
     providerName: source.providerName ?? null,
     providerPhone: source.providerPhone ?? null,
     providerGuidance: source.providerGuidance ?? null
@@ -113,15 +103,13 @@ export function answerItem(state: DerivedPassState, query: string): {
   outcome: AnswerOutcome;
   item: DerivedItem | null;
 } {
-  const normalized = query.trim().toLowerCase();
+  const normalized = normalizeProtocolTerm(query);
   if (!normalized) return { outcome: "NOT_IN_PASS", item: null };
-  if (SAFETY_TERMS.some((term) => normalized.includes(term))) {
-    return { outcome: "PROVIDER_ONLY", item: null };
-  }
-
-  const item = state.items.find(
-    (candidate) => candidate.label.toLowerCase() === normalized || candidate.key.toLowerCase() === normalized
-  ) ?? null;
+  if (isProviderOnlyQuery(query)) return { outcome: "PROVIDER_ONLY", item: null };
+  const item = state.items.find((candidate) => {
+    const terms = [candidate.label, candidate.key, ...(candidate.aliases ?? [])];
+    return terms.some((term) => normalizeProtocolTerm(term) === normalized);
+  }) ?? null;
   if (!item) return { outcome: "NOT_IN_PASS", item: null };
   if (item.state === "queued") return { outcome: "QUEUED", item };
   if (item.state === "held") return { outcome: "HELD", item };

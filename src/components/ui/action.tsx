@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 type Props = {
   children: React.ReactNode;
   href?: string;
@@ -11,6 +9,6 @@ type Props = {
 
 export function Action({ children, href, type = "button", variant = "primary", disabled, onClick }: Props) {
   const content = <>{children}<span className="action-arrow" aria-hidden="true">→</span></>;
-  if (href) return <Link className={`action ${variant}`} href={href}>{content}</Link>;
+  if (href) return <a className={`action ${variant}`} href={href}>{content}</a>;
   return <button className={`action ${variant}`} type={type} disabled={disabled} onClick={onClick}>{content}</button>;
 }

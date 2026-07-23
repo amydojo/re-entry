@@ -4,32 +4,29 @@ async function waitForHydration(page: import("@playwright/test").Page) {
   await page.locator("html[data-hydrated='true']").waitFor();
 }
 
-test("provider signs in and issues the Microneedling Skin Pass", async ({ page }, testInfo) => {
+async function signIn(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await waitForHydration(page);
   await page.getByLabel("Provider email").fill("provider@example.com");
   await page.getByLabel("Password").fill("demo-password");
   await page.getByRole("button", { name: /Sign in to Skin Pass desk/ }).click();
   await expect(page.getByRole("heading", { name: "Skin Pass desk" })).toBeVisible();
+}
 
+test("provider issues a Skin Pass from the fixed Microneedling edition", async ({ page }, testInfo) => {
+  await signIn(page);
   await page.getByRole("link", { name: /Issue a new Skin Pass/ }).click();
   await waitForHydration(page);
+  await expect(page.getByRole("button", { name: /Microneedling/ })).toContainText("V1 · FIXED");
   await page.getByLabel("Client name").fill("Jordan Lee");
   await page.getByLabel("Client mobile").fill("+16265550143");
   await page.getByLabel("Treatment date").fill("2026-07-20");
-  await page.getByRole("button", { name: /Continue to protocol/ }).click();
-
-  await expect(page.getByLabel("Makeup returns on")).toHaveValue("3");
-  await expect(page.getByLabel("Exfoliating acids returns on")).toHaveValue("5");
-  await expect(page.getByLabel("Retinoid returns on")).toHaveValue("7");
-  await expect(page.getByLabel("Intense exercise returns on")).toHaveValue("0");
   await page.getByRole("button", { name: /Review exact client artifact/ }).click();
-  await expect(page.getByText("Makeup Day 3")).toBeVisible();
-  await page.getByRole("button", { name: /Issue Skin Pass/ }).click();
-
-  await expect(page.getByRole("heading", { name: "The Skin Pass is live." })).toBeVisible();
-  await expect(page.getByText("SP-0042 · PROTOCOL 1")).toBeVisible();
-  await expect(page.getByText(/demo-secure-token/)).toBeVisible();
+  await expect(page.getByText(/Template version 1/)).toBeVisible();
+  await page.getByRole("button", { name: /^Issue Skin Pass$/ }).click();
+  await expect(page.getByRole("heading", { name: /Microneedling Skin Pass is live/ })).toBeVisible();
+  await expect(page.getByText(/TEMPLATE 1 · PASS 1/)).toBeVisible();
+  await expect(page.getByText(/demo-protocol-token/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("provider-issued.png"), fullPage: true });
 });
 

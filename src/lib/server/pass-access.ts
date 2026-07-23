@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { makeDemoSnapshot, DEMO_PUBLIC_ID, DEMO_TOKEN } from "@/lib/domain/demo";
+import { lookupDemoProtocolPass } from "@/lib/server/demo-protocol-store";
 import type { PassSnapshotSource } from "@/lib/domain/types";
 
 function ipFingerprint(value: string): string {
@@ -8,8 +9,12 @@ function ipFingerprint(value: string): string {
 }
 
 export async function lookupPass(publicId: string, token: string): Promise<PassSnapshotSource> {
-  if (process.env.REENTRY_DEMO_MODE === "1" && publicId === DEMO_PUBLIC_ID && token === DEMO_TOKEN) {
-    return makeDemoSnapshot();
+  if (process.env.REENTRY_DEMO_MODE === "1") {
+    if (publicId === DEMO_PUBLIC_ID && token === DEMO_TOKEN) return makeDemoSnapshot();
+    const demoPass = lookupDemoProtocolPass(publicId, token);
+    if (demoPass) return demoPass;
+    const now = new Date().toISOString();
+    return { access: "invalid", serverNow: now, lastVerifiedAt: now };
   }
 
   const requestHeaders = await headers();

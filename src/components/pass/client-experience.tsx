@@ -90,7 +90,14 @@ export function ClientExperience({ initialSource, publicId, token }: {
         <p className="meta">ISSUED SKIN PASS · {state.publicId}</p>
         <h1 className="page-title">Your routine will return in stages.</h1>
         <p className="support">This permanent pass shows only what {state.providerName ?? "your provider"} defined. No account is required.</p>
-        <SkinPassArtifact event={state.activeEvent} serverNow={state.serverNow} totalEvents={source.events?.length ?? 0} />
+        <SkinPassArtifact
+          event={state.activeEvent}
+          serverNow={state.serverNow}
+          totalEvents={source.events?.length ?? 0}
+          routineState={state.routineState}
+          recoveryDurationDays={state.recoveryDurationDays}
+          routineRestoredMessage={state.routineRestoredMessage}
+        />
         <Action onClick={openPass}>Open Skin Pass</Action>
       </div>
     );
@@ -109,15 +116,22 @@ export function ClientExperience({ initialSource, publicId, token }: {
 
       <div className="row" style={{ marginTop: 24 }}>
         <div><p className="meta">{state.treatmentName}</p><p className="meta" style={{ marginTop: 8 }}>{state.treatmentDate?.toUpperCase()}</p></div>
-        <div style={{ textAlign: "right" }}><p className="meta">Recovery</p><p className="meta" style={{ marginTop: 8 }}>DAY {String(state.recoveryDay).padStart(2, "0")} / 07</p></div>
+        <div style={{ textAlign: "right" }}><p className="meta">Recovery</p><p className="meta" style={{ marginTop: 8 }}>DAY {String(state.recoveryDay).padStart(2, "0")} / {String(state.recoveryDurationDays).padStart(2, "0")}</p></div>
       </div>
       <p className="section-label">Routine state</p>
-      <div className="row"><h1 className="page-title small" style={{ margin: 0 }}>{state.routineState}</h1>{active && <span aria-label="Live protocol position" style={{ width: 8, height: 8, borderRadius: 8, background: "var(--re-color-signal-current)" }} />}</div>
+      <div className="row"><h1 className="page-title small" style={{ margin: 0 }}>{state.routineState}</h1>{state.routineState === "Re-entry in progress" && <span aria-label="Live protocol position" style={{ width: 8, height: 8, borderRadius: 8, background: "var(--re-color-signal-current)" }} />}</div>
       <p className="support" style={{ marginTop: 6 }}>{state.availableRoutine.length} items available now. {state.heldRoutine.length} remain held.</p>
 
       <div className="skin-pass-stack">
         {following && <div className="future-tab"><div><small>Following</small>{following.itemLabel} · {formatProtocolDate(following.returnAt)}</div><span>→</span></div>}
-        <SkinPassArtifact event={active} serverNow={state.serverNow} totalEvents={source.events?.length ?? 0} />
+        <SkinPassArtifact
+          event={active}
+          serverNow={state.serverNow}
+          totalEvents={source.events?.length ?? 0}
+          routineState={state.routineState}
+          recoveryDurationDays={state.recoveryDurationDays}
+          routineRestoredMessage={state.routineRestoredMessage}
+        />
       </div>
       <ReentryRail state={state} />
 
@@ -128,7 +142,7 @@ export function ClientExperience({ initialSource, publicId, token }: {
       <button className="next-action" onClick={() => setDialog({ type: "check" })} style={{ marginTop: 24 }}><span><small>Next valid action</small><strong>Check a product or activity</strong></span><span className="action-arrow">→</span></button>
       <button className="action quiet" onClick={() => setDialog({ type: "guidance" })} style={{ marginTop: 14 }}>PROVIDER GUIDANCE <span className="action-arrow">→</span></button>
       <button className="action secondary" onClick={verify} style={{ marginTop: 12 }}>Verify current state <span className="action-arrow">↻</span></button>
-      <p className="meta secondary" style={{ marginTop: 28, lineHeight: "16px" }}>ISSUED BY {state.providerName} · PROTOCOL {String(state.protocolVersion).padStart(2, "0")}<br />Time is part of the protocol.</p>
+      <p className="meta secondary" style={{ marginTop: 28, lineHeight: "16px" }}>ISSUED BY {state.providerName} · TEMPLATE {state.templateVersion ?? "LEGACY"} · PASS {String(state.protocolVersion).padStart(2, "0")}<br />Time is part of the protocol.</p>
 
       {dialog && <Modal onClose={() => setDialog(null)}>
         {dialog.type === "check" && <form onSubmit={submitCheck}>
@@ -155,21 +169,22 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
 
 function AnswerView({ state, query, outcome, onClose }: { state: DerivedPassState; query: string; outcome: AnswerOutcome; onClose: () => void }) {
   const item = answerItem(state, query).item;
+  const authoredCopy = item?.clientExplanation || "It is part of the current provider-authored routine.";
   const config = outcome === "AVAILABLE"
-    ? { eyebrow: "AVAILABLE NOW", title: `${item?.label ?? query} is available now.`, copy: "It is part of the current provider-authored routine." }
+    ? { eyebrow: "AVAILABLE NOW", title: `${item?.label ?? query} is available now.`, copy: authoredCopy }
     : outcome === "QUEUED"
-      ? { eyebrow: "RETURNS NEXT", title: `${item?.label ?? query} returns next.`, copy: item?.returnAt ? `${relativeReturnCopy(item.returnAt, state.serverNow)} · ${formatProtocolDate(item.returnAt)}` : "It is the next scheduled return event." }
+      ? { eyebrow: "RETURNS NEXT", title: `${item?.label ?? query} returns next.`, copy: item?.returnAt ? `${relativeReturnCopy(item.returnAt, state.serverNow)} · ${formatProtocolDate(item.returnAt)}. ${item.clientExplanation ?? ""}`.trim() : "It is the next scheduled return event." }
       : outcome === "HELD"
-        ? { eyebrow: "NOT YET", title: `${item?.label ?? query} remains held.`, copy: item?.returnAt ? `${relativeReturnCopy(item.returnAt, state.serverNow)} · ${formatProtocolDate(item.returnAt)}` : "The provider included it but has not made it available yet." }
+        ? { eyebrow: "NOT YET", title: `${item?.label ?? query} remains held.`, copy: item?.returnAt ? `${relativeReturnCopy(item.returnAt, state.serverNow)} · ${formatProtocolDate(item.returnAt)}. ${item.clientExplanation ?? ""}`.trim() : "The provider included it but has not made it available yet." }
         : outcome === "PROVIDER_ONLY"
           ? { eyebrow: "CONTACT PROVIDER", title: "This question cannot be answered by RE:ENTRY.", copy: safetyCopy }
           : { eyebrow: "NOT LISTED", title: `${query || "That item"} is not in this Skin Pass.`, copy: "RE:ENTRY will not infer timing or use general skincare guidance. Ask the provider." };
-  return <><p className="meta">{config.eyebrow}</p><div className="answer-card" style={{ marginTop: 18 }}><h2>{config.title}</h2><p>{config.copy}</p></div><div className="disclosure" style={{ marginTop: 20 }}><h3>Why this answer</h3><p>It was derived only from protocol version {state.protocolVersion}, verified at {new Date(state.lastVerifiedAt).toLocaleString()}.</p></div><div className="dialog-actions"><ProviderContact state={state} /><Action variant="secondary" onClick={onClose}>Back to pass</Action></div></>;
+  return <><p className="meta">{config.eyebrow}</p><div className="answer-card" style={{ marginTop: 18 }}><h2>{config.title}</h2><p>{config.copy}</p></div><div className="disclosure" style={{ marginTop: 20 }}><h3>Why this answer</h3><p>It was derived only from pass protocol version {state.protocolVersion}, verified at {new Date(state.lastVerifiedAt).toLocaleString()}.</p></div><div className="dialog-actions"><ProviderContact state={state} /><Action variant="secondary" onClick={onClose}>Back to pass</Action></div></>;
 }
 
 function InventoryView({ state, inventory, onClose }: { state: DerivedPassState; inventory: "available" | "held"; onClose: () => void }) {
   const items = inventory === "available" ? state.availableRoutine : state.heldRoutine;
-  return <><p className="meta">{inventory === "available" ? "AVAILABLE NOW" : "TEMPORARILY HELD"}</p><h2>{inventory === "available" ? "Current routine inventory" : "Staged for later"}</h2><div className="stack" style={{ marginTop: 20 }}>{items.map((item) => <div className="choice selected" key={item.id}><div><strong>{item.label}</strong><span>{item.returnAt && inventory === "held" ? relativeReturnCopy(item.returnAt, state.serverNow) : "Provider-defined"}</span></div><span className="choice-status">{inventory === "available" ? "AVAILABLE" : "HELD"}</span></div>)}</div><div className="dialog-actions"><Action variant="secondary" onClick={onClose}>Back to pass</Action></div></>;
+  return <><p className="meta">{inventory === "available" ? "AVAILABLE NOW" : "TEMPORARILY HELD"}</p><h2>{inventory === "available" ? "Current routine inventory" : "Staged for later"}</h2><div className="stack" style={{ marginTop: 20 }}>{items.map((item) => <div className="choice selected" key={item.id}><div><strong>{item.label}</strong><span>{item.returnAt && inventory === "held" ? relativeReturnCopy(item.returnAt, state.serverNow) : item.clientExplanation || "Provider-defined"}</span></div><span className="choice-status">{item.state === "queued" ? "RETURNS NEXT" : inventory === "available" ? "AVAILABLE" : "HELD"}</span></div>)}</div><div className="dialog-actions"><Action variant="secondary" onClick={onClose}>Back to pass</Action></div></>;
 }
 
 function GuidanceView({ state, onClose }: { state: DerivedPassState; onClose: () => void }) {
