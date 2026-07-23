@@ -14,12 +14,11 @@ async function openClientLink(page: Page, url: string) {
 test("Protocol Studio publishes immutable Light Chemical Peel editions", async ({ page }, testInfo) => {
   await page.goto("/protocols/new");
   await waitForHydration(page);
-
   await expect(page.getByRole("heading", { name: "Light Chemical Peel" })).toBeVisible();
   await expect(page.getByLabel("Client lookup aliases").first()).toHaveValue("cleanser, face wash");
   await expect(page.getByText("Place each return in time.")).toBeVisible();
 
-  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(page.getByText("The real Skin Pass engine is running against unsaved draft data.")).toBeVisible();
   await page.getByLabel("Test client lookup").fill("foundation");
   await expect(page.getByText("Returns next", { exact: true })).toBeVisible();
@@ -29,7 +28,7 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await expect(page.getByText("Contact provider", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("protocol-client-preview.png"), fullPage: true });
 
-  await page.getByRole("button", { name: "Author" }).click();
+  await page.getByRole("button", { name: "Author", exact: true }).click();
   await page.getByRole("button", { name: "Review publication" }).click();
   await expect(page.getByRole("heading", { name: "Publication review" })).toBeVisible();
   await expect(page.getByText("Enabled items")).toBeVisible();
@@ -48,9 +47,7 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await expect(page.getByText(/TEMPLATE 1 · PASS 1/)).toBeVisible();
 
   await page.goto("/protocols");
-  await page.getByRole("link", { name: "Open instrument" }).filter({ has: page.locator("text=Light Chemical Peel") }).click().catch(async () => {
-    await page.getByRole("link", { name: "Light Chemical Peel" }).click();
-  });
+  await page.getByRole("link", { name: "Light Chemical Peel", exact: true }).click();
   await waitForHydration(page);
   const retinoidGroup = page.getByRole("group", { name: /Item 07 · Retinoid/ });
   await retinoidGroup.getByLabel("Return day").selectOption("9");
@@ -87,8 +84,8 @@ test("Protocol Studio publishes immutable Light Chemical Peel editions", async (
   await page.screenshot({ path: testInfo.outputPath("light-chemical-peel-client.png"), fullPage: true });
 
   await page.goto("/protocols");
-  await page.getByRole("link", { name: "Light Chemical Peel" }).click();
-  await page.getByRole("button", { name: "Archive" }).click();
+  await page.getByRole("link", { name: "Light Chemical Peel", exact: true }).click();
+  await page.getByRole("button", { name: "Archive", exact: true }).click();
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.getByRole("heading", { name: "Light Chemical Peel" })).toBeVisible();
   await expect(page.getByText("New issuance is closed.")).toBeVisible();
