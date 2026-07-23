@@ -32,6 +32,7 @@ jobs:
           tar -xzf /tmp/reentry-source.tar.gz
           rm -rf .bootstrap
           rm -f .github/workflows/bootstrap-source.yml
+          rm -f .github/workflows/ci.yml
       - name: Commit production slice
         shell: bash
         run: |
